@@ -2,20 +2,21 @@ import streamlit as st
 import requests
 import tempfile
 
-st.set_page_config(page_title="Limpar TXT via Link", layout="centered")
-st.title("📥 Limpar Arquivo TXT por Link")
-st.write("Baixa o arquivo direto do Google Drive e remove linhas que começam com `|C100|1|0||55|02|001|`")
+st.set_page_config(page_title="Limpar TXT por Link", layout="centered")
+st.title("🧹 Limpar Arquivo TXT por Link")
+st.write("Remove linhas que começam com `|C100|1|0||55|02|001|` e gera o mesmo arquivo original")
 
-url = st.text_input("Cole aqui o link de download direto (ex: Google Drive):")
+# Entrada do link e nome do arquivo original
+url = st.text_input("📎 Cole o link direto do arquivo (.txt):")
+nome_original = st.text_input("📝 Nome original do arquivo (ex: meu_arquivo.txt):")
 
-if url:
+if url and nome_original:
     try:
-        # Faz download do arquivo
         st.info("📡 Baixando arquivo...")
         response = requests.get(url, stream=True)
         response.raise_for_status()
 
-        # Cria arquivo temporário para salvar o conteúdo
+        # Cria arquivo temporário e processa linha por linha
         with tempfile.NamedTemporaryFile(delete=False, mode="w+", encoding="utf-8") as output_file:
             count_total = 0
             count_removidas = 0
@@ -29,20 +30,20 @@ if url:
                 else:
                     count_removidas += 1
 
-            caminho_arquivo_limpo = output_file.name
+            caminho_saida = output_file.name
 
         st.success(f"✅ Arquivo processado com sucesso!")
-        st.write(f"🔹 Linhas totais: {count_total}")
+        st.write(f"🔹 Total de linhas: {count_total}")
         st.write(f"🗑️ Linhas removidas: {count_removidas}")
 
-        # Botão de download
-        with open(caminho_arquivo_limpo, "rb") as f:
+        # Botão de download com o mesmo nome original
+        with open(caminho_saida, "rb") as f:
             st.download_button(
                 label="📥 Baixar arquivo limpo",
                 data=f,
-                file_name="arquivo_limpo.txt",
+                file_name=nome_original,
                 mime="text/plain"
             )
 
     except Exception as e:
-        st.error(f"❌ Erro ao baixar ou processar o arquivo: {e}")
+        st.error(f"❌ Erro: {e}")
