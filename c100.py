@@ -1,32 +1,35 @@
 import streamlit as st
 import requests
 import tempfile
+import os
 
-st.set_page_config(page_title="Limpar TXT por Link", layout="centered")
+st.set_page_config(page_title="Limpar TXT sem alterar estrutura", layout="centered")
 st.title("🧹 Limpar Arquivo TXT por Link")
-st.write("Remove linhas que começam com `|C100|1|0||55|02|001|` e gera o mesmo arquivo original")
+st.write("Remove apenas as linhas `|C100|1|0||55|02|001|`, mantendo tudo igual ao original")
 
-# Entrada do link e nome do arquivo original
-url = st.text_input("📎 Cole o link direto do arquivo (.txt):")
-nome_original = st.text_input("📝 Nome original do arquivo (ex: meu_arquivo.txt):")
+# Inputs do usuário
+url = st.text_input("📎 Link direto do arquivo (.txt):")
+nome_original = st.text_input("📝 Nome original do arquivo (ex: sped.txt):")
 
 if url and nome_original:
     try:
         st.info("📡 Baixando arquivo...")
+
+        # Faz o download
         response = requests.get(url, stream=True)
         response.raise_for_status()
 
-        # Cria arquivo temporário e processa linha por linha
-        with tempfile.NamedTemporaryFile(delete=False, mode="w+", encoding="utf-8") as output_file:
+        # Nome do arquivo temporário de saída
+        with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8") as output_file:
             count_total = 0
             count_removidas = 0
 
-            for linha in response.iter_lines():
-                linha_decodificada = linha.decode("utf-8")
+            for linha_bytes in response.iter_lines():
+                linha = linha_bytes.decode("utf-8", errors="ignore")  # mantém codificação segura
                 count_total += 1
 
-                if not linha_decodificada.startswith("|C100|1|0||55|02|001|"):
-                    output_file.write(linha_decodificada + "\n")
+                if not linha.startswith("|C100|1|0||55|02|001|"):
+                    output_file.write(linha + "\n")
                 else:
                     count_removidas += 1
 
@@ -36,7 +39,7 @@ if url and nome_original:
         st.write(f"🔹 Total de linhas: {count_total}")
         st.write(f"🗑️ Linhas removidas: {count_removidas}")
 
-        # Botão de download com o mesmo nome original
+        # Botão de download com mesmo nome original
         with open(caminho_saida, "rb") as f:
             st.download_button(
                 label="📥 Baixar arquivo limpo",
@@ -46,4 +49,4 @@ if url and nome_original:
             )
 
     except Exception as e:
-        st.error(f"❌ Erro: {e}")
+        st.error(f"❌ Erro ao processar: {e}")
