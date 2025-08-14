@@ -1,52 +1,58 @@
 import streamlit as st
-import requests
+import zipfile
 import tempfile
 import os
 
-st.set_page_config(page_title="Limpar TXT sem alterar estrutura", layout="centered")
-st.title("🧹 Limpar Arquivo TXT por Link")
-st.write("Remove apenas as linhas `|C100|1|0||55|02|001|`, mantendo tudo igual ao original")
+st.set_page_config(page_title="Limpar TXT de ZIP", layout="centered")
+st.title("📦 Limpar TXT de ZIP automaticamente")
 
-# Inputs do usuário
-url = st.text_input("📎 Link direto do arquivo (.txt):")
-nome_original = st.text_input("📝 Nome original do arquivo (ex: sped.txt):")
+uploaded_zip = st.file_uploader("📂 Faça upload de um arquivo .zip contendo um .txt", type=["zip"])
 
-if url and nome_original:
-    try:
-        st.info("📡 Baixando arquivo...")
+if uploaded_zip is not None:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Salva o zip no diretório temporário
+        zip_path = os.path.join(temp_dir, "arquivo.zip")
+        with open(zip_path, "wb") as f:
+            f.write(uploaded_zip.read())
 
-        # Faz o download
-        response = requests.get(url, stream=True)
-        response.raise_for_status()
+        # Extrai o ZIP
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(temp_dir)
+            arquivos_txt = [f for f in zip_ref.namelist() if f.endswith(".txt")]
 
-        # Nome do arquivo temporário de saída
-        with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8") as output_file:
+        if not arquivos_txt:
+            st.error("❌ Nenhum arquivo .txt encontrado no ZIP.")
+        else:
+            # Pega o primeiro .txt encontrado
+            nome_txt = arquivos_txt[0]
+            caminho_txt = os.path.join(temp_dir, nome_txt)
+            caminho_corrigido = os.path.join(temp_dir, nome_txt)
+
             count_total = 0
             count_removidas = 0
 
-            for linha_bytes in response.iter_lines():
-                linha = linha_bytes.decode("utf-8", errors="ignore")  # mantém codificação segura
-                count_total += 1
+            # Lê e processa o arquivo (sobrescreve o original)
+            with open(caminho_txt, "r", encoding="utf-8", errors="ignore") as original:
+                linhas = original.readlines()
 
-                if not linha.startswith("|C100|1|0||55|02|001|"):
-                    output_file.write(linha + "\n")
-                else:
-                    count_removidas += 1
+            with open(caminho_corrigido, "w", encoding="utf-8") as saida:
+                for linha in linhas:
+                    count_total += 1
+                    if not linha.startswith("|C100|1|0||55|02|001|"):
+                        saida.write(linha)
+                    else:
+                        count_removidas += 1
 
-            caminho_saida = output_file.name
+            st.success(f"✅ Processado com sucesso!")
+            st.write(f"📄 Arquivo: `{nome_txt}`")
+            st.write(f"🔹 Total de linhas: {count_total}")
+            st.write(f"🗑️ Linhas removidas: {count_removidas}")
 
-        st.success(f"✅ Arquivo processado com sucesso!")
-        st.write(f"🔹 Total de linhas: {count_total}")
-        st.write(f"🗑️ Linhas removidas: {count_removidas}")
-
-        # Botão de download com mesmo nome original
-        with open(caminho_saida, "rb") as f:
-            st.download_button(
-                label="📥 Baixar arquivo limpo",
-                data=f,
-                file_name=nome_original,
-                mime="text/plain"
-            )
-
-    except Exception as e:
-        st.error(f"❌ Erro ao processar: {e}")
+            # Cria botão de download imediatamente
+            with open(caminho_corrigido, "rb") as f:
+                st.download_button(
+                    label="📥 Baixar arquivo corrigido",
+                    data=f,
+                    file_name=nome_txt,
+                    mime="text/plain"
+                )
