@@ -1,32 +1,35 @@
 import streamlit as st
+import tempfile
 
-st.set_page_config(page_title="Limpar Arquivo TXT", layout="centered")
-
-st.title("🧹 Limpar Linhas do TXT")
-st.write("Remove linhas que começam com `|C100|1|0||55|02|001|`")
+st.set_page_config(page_title="Limpar Arquivo TXT Grande", layout="centered")
+st.title("🧹 Limpar Linhas do TXT (Arquivo Grande)")
+st.write("Remove linhas que começam com `|C100|1|0||55|02|001|` sem travar a memória 😎")
 
 uploaded_file = st.file_uploader("Faça upload do seu arquivo .txt", type=["txt"])
 
 if uploaded_file is not None:
-    linhas = uploaded_file.read().decode("utf-8").splitlines()
+    with tempfile.NamedTemporaryFile(delete=False, mode="w+", encoding="utf-8") as output_file:
+        count_total = 0
+        count_removidas = 0
 
-    # Filtrar as linhas
-    linhas_filtradas = [
-        linha for linha in linhas
-        if not linha.startswith("|C100|1|0||55|02|001|")
-    ]
+        for linha in uploaded_file:
+            linha_decodificada = linha.decode("utf-8")
+            count_total += 1
 
-    # Transformar de volta em texto
-    resultado = "\n".join(linhas_filtradas)
+            if not linha_decodificada.startswith("|C100|1|0||55|02|001|"):
+                output_file.write(linha_decodificada)
+            else:
+                count_removidas += 1
 
-    # Mostrar prévia
-    st.subheader("✅ Linhas filtradas (prévia):")
-    st.text("\n".join(linhas_filtradas[:10]))  # mostra só as 10 primeiras linhas
+        output_file_path = output_file.name
 
-    # Botão para download
-    st.download_button(
-        label="📥 Baixar arquivo limpo",
-        data=resultado,
-        file_name="arquivo_limpo.txt",
-        mime="text/plain"
-    )
+    st.success(f"Processado com sucesso! 🔍\n\nTotal de linhas: {count_total}\nLinhas removidas: {count_removidas}")
+
+    # Para baixar
+    with open(output_file_path, "rb") as f:
+        st.download_button(
+            label="📥 Baixar arquivo limpo",
+            data=f,
+            file_name="arquivo_limpo.txt",
+            mime="text/plain"
+        )
